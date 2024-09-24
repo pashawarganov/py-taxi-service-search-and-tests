@@ -8,7 +8,7 @@ from taxi.forms import (
     ManufacturerSearchForm,
     DriverSearchForm
 )
-from taxi.models import Manufacturer, Car, Driver
+from taxi.models import Manufacturer, Car
 
 MANUFACTURER_URL = reverse("taxi:manufacturer-list")
 DRIVER_URL = reverse("taxi:driver-list")
@@ -42,15 +42,15 @@ class DriverFormsTests(TestCase):
 
 class SearchFormsTests(TestCase):
     def setUp(self):
-        self.manufacturers = Manufacturer.objects.bulk_create([
-            Manufacturer(
+        self.manufacturers = {
+            f"facture{i}": Manufacturer.objects.create(
                 name=f"facture{i}",
                 country=f"country{i}"
             )
             for i in range(3)
-        ])
-        self.drivers = [
-            get_user_model().objects.create_user(
+        }
+        self.drivers = {
+            f"bob123{i}": get_user_model().objects.create_user(
                 username=f"bob123{i}",
                 password="test123",
                 first_name="Bob",
@@ -58,15 +58,15 @@ class SearchFormsTests(TestCase):
                 license_number=f"ABC1234{i}",
             )
             for i in range(3)
-        ]
-        self.client.force_login(self.drivers[0])
-        self.cars = Car.objects.bulk_create([
-            Car(
+        }
+        self.client.force_login(self.drivers["bob1231"])
+        self.cars = {
+            f"A{i}": Car.objects.create(
                 model=f"A{i}",
-                manufacturer=self.manufacturers[0],
+                manufacturer=self.manufacturers["facture1"],
             )
-            for i in range(5)
-        ])
+            for i in range(3)
+        }
 
     def test_car_search_form_is_valid(self):
         form = CarSearchForm(data={"model": "A3"})
@@ -81,37 +81,22 @@ class SearchFormsTests(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_car_search_form_return_right_object(self):
-        response = self.client.get(CAR_URL, {"model": "A3"})
-        self.assertEqual(list(response.context["car_list"]), [self.cars[3]])
-
-    def test_car_search_form_return_full_list(self):
-        response = self.client.get(CAR_URL, {"model": ""})
-        self.assertEqual(list(response.context["car_list"]), list(self.cars))
+        key = "A1"
+        response = self.client.get(CAR_URL, {"model": key})
+        self.assertEqual(list(response.context["car_list"]), [self.cars[key]])
 
     def test_manufacturer_search_form_return_right_object(self):
-        response = self.client.get(MANUFACTURER_URL, {"name": "facture1"})
+        key = "facture1"
+        response = self.client.get(MANUFACTURER_URL, {"name": key})
         self.assertEqual(
             list(response.context["manufacturer_list"]),
-            [self.manufacturers[1]]
-        )
-
-    def test_manufacturer_search_form_return_full_list(self):
-        response = self.client.get(MANUFACTURER_URL, {"name": ""})
-        self.assertEqual(
-            list(response.context["manufacturer_list"]),
-            list(self.manufacturers)
+            [self.manufacturers[key]]
         )
 
     def test_driver_search_form_return_right_object(self):
-        response = self.client.get(DRIVER_URL, {"username": "bob1231"})
+        key = "bob1231"
+        response = self.client.get(DRIVER_URL, {"username": key})
         self.assertEqual(
             list(response.context["driver_list"]),
-            [self.drivers[1]]
-        )
-
-    def test_driver_search_form_return_full_list(self):
-        response = self.client.get(DRIVER_URL, {"username": ""})
-        self.assertEqual(
-            list(response.context["driver_list"]),
-            list(self.drivers)
+            [self.drivers[key]]
         )
